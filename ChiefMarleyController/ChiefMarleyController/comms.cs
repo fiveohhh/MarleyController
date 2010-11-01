@@ -29,7 +29,17 @@ namespace ChiefMarleyController
             {
                 throw new Exception("Error Parsing IpAddress");
             }
-            tcpSocket = new TcpClient(addr.ToString(), settings.Port);
+            try
+            {
+                tcpSocket = new TcpClient(addr.ToString(), settings.Port);
+            }
+            catch(Exception e)
+            {
+                tcpSocket.Close();
+                throw e;
+
+            }
+            
         }
 
         public bool IsConneted

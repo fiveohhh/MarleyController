@@ -24,6 +24,8 @@ namespace ChiefMarleyController
             InitializeComponent();
         }
 
+        public ChiefMarleyControllerSettings ConnectionSettings { get; private set; }
+
         /// <summary>
         /// will want to catch exception that occur in here and let someone know
         /// </summary>
@@ -41,7 +43,7 @@ namespace ChiefMarleyController
         // probably going to fire an event and update everything we need to update
         private void button1_Click(object sender, RoutedEventArgs e)
         {
-
+            
         }
 
 

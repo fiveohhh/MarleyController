@@ -11,16 +11,19 @@ namespace ChiefMarleyController
     public class Pioneer1120Engine
     {
 
-        Pioneer1120.Pioneer1120State DevState;
+        public Pioneer1120.Pioneer1120State DevState;
         bool Listening = false;
         private string splitSequence = "\r\n";
         comms Comms;
 
+        public event EventHandler DeviceStateUpdateFromDevice;
         List<string> RspTypes;
 
+        public delegate void DevStateChangedDelegate(Pioneer1120.Pioneer1120State state);
 
+        private DevStateChangedDelegate DevChangedDel;    
 
-        BackgroundWorker bw = new BackgroundWorker();
+        public BackgroundWorker bw = new BackgroundWorker();
 
         // going to use this to put received strings in, will figure out what to do with them later
         Queue<string> Received;
@@ -33,12 +36,37 @@ namespace ChiefMarleyController
             RspTypes = Enum.GetNames(typeof(PioneerProtocol.ResponseMsgType)).ToList();
             Received = new Queue<string>();
             Comms = comms;
-            SendData("VU");
+            //SendData("VU");
             
             // create thread to listen and receive responses
             bw.DoWork += RX;
+            bw.ProgressChanged += new ProgressChangedEventHandler(bw_ProgressChanged);
+            bw.WorkerReportsProgress = true;
             bw.RunWorkerAsync();
             
+        }
+
+        /// <summary>
+        /// set a delegate if you want it to execute when device state is changed
+        /// </summary>
+        /// <param name="d"></param>
+        public void SetDevChangedDel(DevStateChangedDelegate d)
+        {
+            DevChangedDel = d;
+        }
+
+        void bw_ProgressChanged(object sender, ProgressChangedEventArgs e)
+        {
+            DevChangedDel(DevState);
+        }
+
+
+        /// <summary>
+        /// Get updated State from device
+        /// </summary>
+        public void UpdateStatus()
+        {
+            SendData("?V");
         }
 
 
@@ -60,8 +88,8 @@ namespace ChiefMarleyController
         {
             string rxBuffer = string.Empty;
 
-            Listening = true;
-            while (Comms.IsConneted)
+           // Listening = true;
+            while (true)
             {
                 rxBuffer += Comms.Read();
                 if (rxBuffer.Contains(splitSequence))
@@ -70,7 +98,7 @@ namespace ChiefMarleyController
                     rxBuffer = string.Empty;
                 }
             }
-            Listening = false;
+           // Listening = false;
         }
 
         /// <summary>
@@ -85,7 +113,7 @@ namespace ChiefMarleyController
                 {
                     DevState.LastKnownFLStatus = s;
                 }
-                if (s.Length == 0)
+                else if (s.Length == 0)
                 {
                     // don't need blank lines throw it away
                 }
@@ -103,10 +131,16 @@ namespace ChiefMarleyController
         /// </summary>
         private void ProcessQueue()
         {
-            
+            while (Received.Count != 0)
+            {
+                string msg = Received.Dequeue();
+                PioneerProtocol.Response.RSPMsg Msg = GetRSPMessage(msg);
+                UpdateDevState(Msg);
+            }
+
         }
 
-        public PioneerProtocol.Response.RSPMsg GetRSPMessageType(string msg)
+        public PioneerProtocol.Response.RSPMsg GetRSPMessage(string msg)
         {
             PioneerProtocol.Response.RSPMsg rspMsgType;
             PioneerProtocol.ResponseMsgType RspEnumType = PioneerProtocol.ResponseMsgType.UNKNOWN;
@@ -122,6 +156,7 @@ namespace ChiefMarleyController
 
             rspMsgType = EnumToRSPMsg(RspEnumType);
 
+            rspMsgType.Decode(msg);
             return rspMsgType;
         }
 
@@ -143,10 +178,35 @@ namespace ChiefMarleyController
                     msgType = new PioneerProtocol.Response.MUT();
                     break;
                 default:
-                    msgType = null;
+                    msgType = new PioneerProtocol.Response.UNKNOWN();
                     break;
             }
             return msgType;
+        }
+
+        private void UpdateDevState(PioneerProtocol.Response.RSPMsg msg)
+        {
+            if (msg.GetType() == typeof(PioneerProtocol.Response.VOL))
+            {
+                DevState.CurrentVolumeState = ((PioneerProtocol.Response.VOL)msg).Volume;
+            }
+            else if (msg.GetType() == typeof(PioneerProtocol.Response.PWR))
+            {
+                DevState.PowerState = ((PioneerProtocol.Response.PWR)msg).pwrState;
+            }
+            else if (msg.GetType() == typeof(PioneerProtocol.Response.MUT))
+            {
+                DevState.MuteState = ((PioneerProtocol.Response.MUT)msg).MuteState;
+            }
+            else if (msg.GetType() == typeof(PioneerProtocol.Response.FN))
+            {
+                DevState.InputState = ((PioneerProtocol.Response.FN)msg).SelectedInput;
+            }
+
+            if (DeviceStateUpdateFromDevice != null)
+            {
+                DeviceStateUpdateFromDevice(DevState, null);
+            }
         }
         
     }

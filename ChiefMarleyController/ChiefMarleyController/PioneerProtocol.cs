@@ -74,7 +74,9 @@ namespace ChiefMarleyController
             /// <summary>FL Display Information</summary>
             FL,
             /// <summary>Input Name Information</summary>
-            RGB
+            RGB,
+            /// <summary>Unknown</summary>
+            UNKNOWN
         }
 
         public enum InputType
@@ -102,6 +104,47 @@ namespace ChiefMarleyController
             ADAPTER_PORT = 33
         }
 
+        public enum MuteState
+        {
+            MUTED = 0,
+            UNMUTED
+        }
+
+        public class VolumeState
+        {
+            public const byte MIN_VOL = 0;
+            public const byte MAX_VOL = 185;
+            /// <summary>
+            /// Volume 0-185
+            /// </summary>
+            public byte VolumeLvl { get; set; }
+            /// <summary>
+            /// volume in dB
+            /// </summary>
+            public double VolDB
+            {
+                get
+                {
+                    return VolumeLvlToDb(VolumeLvl);
+                }
+            }
+
+            /// <summary>
+            /// returns values in .5dB increments
+            /// </summary>
+            /// <param name="VolLvl">0-185</param>
+            /// <returns></returns>
+            public static double VolumeLvlToDb(byte VolLvl)
+            {
+                if (VolLvl > MAX_VOL || VolLvl < MIN_VOL)
+                {
+                    throw new Exception("Attempted to set volume outside of accepted range: " + MIN_VOL + " <-> " + MAX_VOL);
+                }
+                double FromMinimum = (double)(VolLvl) / 2;
+                return -80 + FromMinimum;
+            }
+        }
+
         
         public class Request
         {
@@ -114,6 +157,11 @@ namespace ChiefMarleyController
                 protected string Msg;
 
                 protected ResponseMsgType ResponseType;
+
+                public string GetMsgAsString()
+                {
+                    return Msg;
+                }
             }
 
             public class Power : REQMsg
@@ -183,7 +231,7 @@ namespace ChiefMarleyController
                         }
                         else
                         {
-                            Msg = volume.ToString().PadLeft(3) + "VL";
+                            Msg = volume.ToString().PadLeft(3,'0') + "VL";
                         }
                     }
                 }
@@ -285,10 +333,12 @@ namespace ChiefMarleyController
         {
             public abstract class RSPMsg
             {
+               
                 protected string Identifier;
                 protected string Message;
 
-                public abstract void Decode(); 
+                public abstract void Decode(string msg);
+
             }
 
             public class PWR : RSPMsg
@@ -299,16 +349,25 @@ namespace ChiefMarleyController
                     ON = 0,
                     OFF
                 }
-                private PowerState pwrState;
+                public PowerState pwrState{get;private set;}
                 public PWR(string msg)
+                    :this()
                 {
-                    Identifier = "PWR";
+                   
                     Message = msg;
-                    Decode();
+                    Decode(Message);
                 }
 
-                public override void Decode()
+                public PWR()
                 {
+                    Identifier = "PWR";
+                }
+
+
+
+                public override void Decode(string msg)
+                {
+                    Message = msg;
                     if (Message.StartsWith(Identifier))
                     {
                         string s = Message.Replace(Identifier, "");
@@ -324,30 +383,33 @@ namespace ChiefMarleyController
 
             public class VOL : RSPMsg
             {
-                byte VolumeLvl;
-                double VolDB
-                {
-                    get
-                    {
-                        return VolumeLvlToDb(VolumeLvl);
-                    }
-                }
+                public VolumeState Volume { get; private set; }
 
                 public VOL(string msg)
+                    :this()
                 {
-                    Identifier = "VOL";
+                    
                     Message = msg;
-                    Decode();
+                    Decode(Message);
 
                 }
 
-                public override void Decode()
+           
+
+                public VOL()
                 {
+                    Identifier = "VOL";
+                    Volume = new VolumeState();
+                }
+
+                public override void Decode(string msg)
+                {
+                    Message = msg;
                     if (Message.StartsWith(Identifier))
                     {
                         // remove identifier, rest should be volume
                         string s = Message.Replace(Identifier, "");
-                        VolumeLvl = byte.Parse(s);
+                        Volume.VolumeLvl = byte.Parse(s);
                     }
                     else
                     {
@@ -355,45 +417,57 @@ namespace ChiefMarleyController
                     }
                 }
 
-                /// <summary>
-                /// returns values in .5dB increments
-                /// </summary>
-                /// <param name="VolLvl">0-185</param>
-                /// <returns></returns>
-                public double VolumeLvlToDb(byte VolLvl)
-                {
-                    double FromMinimum = (double)(VolLvl) / 2;
-                    return -80 + FromMinimum;
-                }
+               
             }
 
             public class MUT : RSPMsg
             {
 
-                public enum MuteState
-                {
-                    ON = 0,
-                    OFF
-                }
-                public MuteState PwrState { get; private set; }
+                
+                public MuteState MuteState { get; private set; }
+
                 public MUT(string msg)
+                    :this()
                 {
-                    Identifier = "MUT";
+                    
                     Message = msg;
-                    Decode();
+                    Decode(Message);
                 }
 
-                public override void Decode()
+                public MUT()
                 {
+                    Identifier = "MUT";
+                }
+
+                public override void Decode(string msg)
+                {
+                    Message = msg;
                     if (Message.StartsWith(Identifier))
                     {
                         string s = Message.Replace(Identifier, "");
-                        PwrState = (MuteState)int.Parse(s);
+                        MuteState = (MuteState)int.Parse(s);
                     }
                     else
                     {
                         throw new Exception("Invalid message format, expected " + Identifier + " Received " + Message);
                     }
+                }
+
+            }
+
+            public class UNKNOWN : RSPMsg
+            {
+                public UNKNOWN(string msg)
+                    :this()
+                {
+
+                }
+                public UNKNOWN()
+                {
+                }
+                public override void Decode(string msg)
+                {
+                    Message = msg;
                 }
 
             }
@@ -407,15 +481,23 @@ namespace ChiefMarleyController
                     OFF
                 }
                 public InputType SelectedInput { get; private set; }
+
                 public FN(string msg)
+                    :this()
                 {
-                    Identifier = "FN";
+                    
                     Message = msg;
-                    Decode();
+                    Decode(Message);
                 }
 
-                public override void Decode()
+                public FN()
                 {
+                    Identifier = "FN";
+                }
+
+                public override void Decode(string msg)
+                {
+                    Message = msg;
                     if (Message.StartsWith(Identifier))
                     {
                         string s = Message.Replace(Identifier, "");

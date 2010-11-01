@@ -1,5 +1,8 @@
 ChiefMarleyController/ChiefMarleyController/bin/
 ChiefMarleyController/ChiefMarleyController/obj/
+ChiefMarleyController/ChiefMarleyController/Properties
+
+*.suo
 
 # Compiled source #
 ###################

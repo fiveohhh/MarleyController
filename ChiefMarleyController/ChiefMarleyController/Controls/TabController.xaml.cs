@@ -49,6 +49,22 @@ namespace ChiefMarleyController.Controls
 
         }
 
+        /// <summary>
+        /// Change the gui to match an updated state
+        /// </summary>
+        /// <param name="devState"></param>
+        public void SetDeviceState(Pioneer1120.Pioneer1120State devState)
+        {
+            //try
+            //{
+                commonControls1.volume1.VolumeState = devState.CurrentVolumeState;
+            //}
+            //catch(Exception e)
+            //{
+            //    MessageBox.Show("Error setting Volume state");
+            //}
+        }
+
        // public delegate void UpdateDeviceState(Pioneer1120.Pioneer1120State DevState);
     }
 }

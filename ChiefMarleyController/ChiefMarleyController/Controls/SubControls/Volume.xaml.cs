@@ -29,8 +29,11 @@ namespace ChiefMarleyController.Controls.SubControls
             }
             set
             {
-                volState = value;
-                slider1.Value = VolumeState.VolumeLvl;
+                if (value != null)
+                {
+                    volState = value;
+                    slider1.Value = volState.VolumeLvl;
+                }
             }
         }
         public event EventHandler VolumeChanged;

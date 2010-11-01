@@ -11,25 +11,14 @@ namespace ChiefMarleyController.Pioneer1120
         {
         }
 
-        /// <summary>
-        /// Volume 0-185
-        /// </summary>
-        public byte VolumeLvl { get; set; }
-        /// <summary>
-        /// volume in dB
-        /// </summary>
-        public double VolDB
-        {
-            get
-            {
-                return PioneerProtocol.Response.VOL.VolumeLvlToDb(VolumeLvl);
-            }
-        }
+        public ChiefMarleyController.PioneerProtocol.VolumeState CurrentVolumeState { get; set; }
+
+        public ChiefMarleyController.PioneerProtocol.MuteState MuteState { get; set; }
 
         /// <summary>
         /// current input selected
         /// </summary>
-        public PioneerProtocol.InputType InputState { get; set; }
+        public ChiefMarleyController.PioneerProtocol.InputType InputState { get; set; }
 
         /// <summary>
         /// keeps track of last known state of display
@@ -39,6 +28,13 @@ namespace ChiefMarleyController.Pioneer1120
         /// <summary>
         /// If device is on or off
         /// </summary>
-        public PioneerProtocol.Response.PWR.PowerState PowerState { get; set; }
+        public ChiefMarleyController.PioneerProtocol.Response.PWR.PowerState PowerState { get; set; }
+
+    }
+
+    public class ZoneState
+    {
+        public ChiefMarleyController.PioneerProtocol.MuteState MuteState { get; set; }
+        public ChiefMarleyController.PioneerProtocol.VolumeState VolumeState { get; set; }
     }
 }
